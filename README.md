@@ -25,6 +25,67 @@ A CLI tool to manage and clean Claude Code conversation history stored in `~/.cl
 | Warmup | Agent warmup messages (internal optimization) | Hidden by default |
 | Agent | Subagent conversation logs (`agent-*.jsonl`) | Hidden by default |
 
+## Claude Code Directory Structure
+
+Claude Code stores conversation history in `~/.claude/projects/`. Here's the complete structure:
+
+```
+~/.claude/
+├── history.jsonl                    # Index of all conversations
+├── settings.json                    # Global settings (including cleanupPeriodDays)
+├── .credentials.json                # Authentication
+└── projects/
+    ├── -home-user-myproject/        # Workspace folder (path encoded: / → -)
+    │   ├── abc123-def456.jsonl      # Main conversation (JSONL format)
+    │   ├── abc123-def456/           # Related files for this conversation
+    │   │   └── subagents/           # Subagent transcripts (new format)
+    │   │       └── agent-a1b2c3.jsonl
+    │   └── agent-xyz789.jsonl       # Subagent conversation (old format, legacy)
+    ├── -home-user-another/
+    │   └── ...
+    └── tmpclaude-xxxx-cwd/          # Temporary working directories (garbage)
+```
+
+### Path Encoding
+
+Claude encodes workspace paths by replacing `/` with `-`:
+- `/home/user/myproject` → `-home-user-myproject`
+
+### Conversation Files (.jsonl)
+
+Each conversation is stored in [JSON Lines](https://jsonlines.org/) format. Each line is a JSON object with:
+- `type`: Message type (`user`, `assistant`, `system`)
+- `message`: Content object
+- `timestamp`: ISO 8601 timestamp
+
+### Subagent Storage (Version Change)
+
+Claude Code changed how subagent files are stored:
+
+| Version | Location | Example |
+|---------|----------|---------|
+| Old | Workspace root | `-home-user-project/agent-abc123.jsonl` |
+| New | Inside conversation folder | `-home-user-project/{sessionId}/subagents/agent-abc123.jsonl` |
+
+When you delete a main conversation, `chc` will:
+1. Delete the `.jsonl` file
+2. Delete the related folder (including `subagents/`)
+3. Delete legacy `agent-*.jsonl` files that reference this conversation
+
+### Auto Cleanup
+
+By default, Claude Code deletes conversation files after 30 days. You can change this in `~/.claude/settings.json`:
+```json
+{
+  "cleanupPeriodDays": 99999
+}
+```
+
+### References
+
+- [Claude Code's hidden conversation history](https://kentgigger.com/posts/claude-code-conversation-history)
+- [Create custom subagents - Claude Code Docs](https://code.claude.com/docs/en/sub-agents)
+
 ## Installation
 
 ### Pre-built Binaries (Recommended)
