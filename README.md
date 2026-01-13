@@ -41,9 +41,8 @@ Claude Code stores conversation history in `~/.claude/projects/`. Here's the com
     │   │   └── subagents/           # Subagent transcripts (new format)
     │   │       └── agent-a1b2c3.jsonl
     │   └── agent-xyz789.jsonl       # Subagent conversation (old format, legacy)
-    ├── -home-user-another/
-    │   └── ...
-    └── tmpclaude-xxxx-cwd/          # Temporary working directories (garbage)
+    └── -home-user-another/
+        └── ...
 ```
 
 ### Path Encoding
