@@ -99,24 +99,33 @@ fn extract_title(content: &str) -> Option<String> {
 }
 
 fn extract_text_from_content(content: &serde_json::Value) -> String {
-    match content {
+    let raw = match content {
         serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Array(arr) => {
+            let mut result = String::new();
             for item in arr {
                 if let Some(obj) = item.as_object() {
                     if obj.get("type").and_then(|v| v.as_str()) == Some("text") {
                         if let Some(text) = obj.get("text").and_then(|v| v.as_str()) {
                             if !text.starts_with("<ide_") {
-                                return text.to_string();
+                                result = text.to_string();
+                                break;
                             }
                         }
                     }
                 }
             }
-            String::new()
+            result
         }
         _ => String::new(),
-    }
+    };
+    // Only take first line and clean up whitespace
+    raw.lines()
+        .next()
+        .unwrap_or("")
+        .trim()
+        .replace('\t', " ")
+        .to_string()
 }
 
 fn extract_timestamp(content: &str) -> Option<DateTime<Utc>> {
@@ -477,9 +486,8 @@ fn run_selection(conversations: Vec<Conversation>) -> Result<()> {
     // Count active conversations
     let active_count = conversations.iter().filter(|c| c.is_active).count();
 
-    // Enter alternate screen (clean buffer)
-    print!("\x1B[?1049h");
-    let _ = std::io::Write::flush(&mut std::io::stdout());
+    // Clear screen and hide cursor
+    let _ = term.clear_screen();
     let _ = term.hide_cursor();
 
     loop {
@@ -496,9 +504,9 @@ fn run_selection(conversations: Vec<Conversation>) -> Result<()> {
             viewport_start = cursor - viewport_size + 1;
         }
 
-        // Clear and move to top
-        print!("\x1B[2J\x1B[H");
-        let _ = std::io::Write::flush(&mut std::io::stdout());
+        // Move to top and clear
+        let _ = term.move_cursor_to(0, 0);
+        let _ = term.clear_screen();
 
         let selected_count = selected.iter().filter(|&&s| s).count();
         let viewport_end = std::cmp::min(viewport_start + viewport_size, conversations.len());
@@ -648,8 +656,7 @@ fn run_selection(conversations: Vec<Conversation>) -> Result<()> {
                         .collect();
 
                     // Direct Enter to delete - final confirmation screen
-                    print!("\x1B[2J\x1B[H");
-                    let _ = std::io::Write::flush(&mut std::io::stdout());
+                    let _ = term.clear_screen();
 
                     println!("{}", "Claude Code Chat Manager".bold().cyan());
                     println!();
@@ -713,9 +720,7 @@ fn run_selection(conversations: Vec<Conversation>) -> Result<()> {
                                 println!();
                                 println!("Press any key to exit...");
                                 let _ = term.read_key();
-                                // Leave alternate screen
-                                print!("\x1B[?1049l");
-                                let _ = std::io::Write::flush(&mut std::io::stdout());
+                                let _ = term.clear_screen();
                                 let _ = term.show_cursor();
                                 return Ok(());
                             }
@@ -730,9 +735,7 @@ fn run_selection(conversations: Vec<Conversation>) -> Result<()> {
                 }
             }
             Key::Escape | Key::Char('q') => {
-                // Leave alternate screen
-                print!("\x1B[?1049l");
-                let _ = std::io::Write::flush(&mut std::io::stdout());
+                let _ = term.clear_screen();
                 let _ = term.show_cursor();
                 println!("Cancelled.");
                 return Ok(());
